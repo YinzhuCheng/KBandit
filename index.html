@@ -28,7 +28,7 @@
           </select>
         </div>
         <div class="btn-row">
-          <button id="btnGenerate" class="btn">生成参数表</button>
+          <button id="btnGenerate" class="btn">开始游戏</button>
           <button id="btnRandomize" class="btn">随机化参数</button>
           <button id="btnApply" class="btn btn-primary">应用参数</button>
           <button id="btnReset" class="btn btn-outline">重置实验</button>
@@ -53,6 +53,7 @@
           <button id="btnStep1" class="btn">执行 1 步</button>
           <button id="btnStep10" class="btn">执行 10 步</button>
           <button id="btnStep100" class="btn">执行 100 步</button>
+          <button id="btnStep1000" class="btn">执行 1000 步</button>
         </div>
         <p class="hint">手动模式可在参数表中对每个拉杆点击“拉一次”。</p>
 
@@ -62,7 +63,7 @@
           <div><span>平均奖励</span><strong id="statAvgReward">0</strong></div>
           <div><span>最优臂(真值)</span><strong id="statBestArm">-</strong></div>
           <div><span>最优期望奖励 μ*</span><strong id="statMuStar">-</strong></div>
-          <div><span>总后悔值</span><strong id="statRegret">0</strong></div>
+          <div><span>期望后悔值</span><strong id="statRegret">0</strong></div>
         </div>
       </section>
 
@@ -74,7 +75,7 @@
             <canvas id="rewardChart" height="150"></canvas>
           </div>
           <div class="chart-item">
-            <h3>后悔值（Regret）</h3>
+            <h3>期望后悔值</h3>
             <canvas id="regretChart" height="150"></canvas>
           </div>
         </div>

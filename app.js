@@ -15,6 +15,7 @@
     btnStep1: document.getElementById('btnStep1'),
     btnStep10: document.getElementById('btnStep10'),
     btnStep100: document.getElementById('btnStep100'),
+    btnStep1000: document.getElementById('btnStep1000'),
     statSteps: document.getElementById('statSteps'),
     statCumReward: document.getElementById('statCumReward'),
     statAvgReward: document.getElementById('statAvgReward'),
@@ -94,6 +95,7 @@
     state.t = 0;
     state.cumulativeReward = 0;
     state.cumulativeRegret = 0;
+    state.expectedCumulativeReward = 0;
     state.counts = Array(state.K).fill(0);
     state.sums = Array(state.K).fill(0);
     state.means = Array(state.K).fill(0);
@@ -148,6 +150,7 @@
       thead.push('<th>均值</th><th>标准差</th>');
     }
     thead.push('<th>统计（拉动次数/样本均值）</th>');
+    thead.push('<th>UCB 置信上界</th>');
     thead.push('<th>操作</th>');
     thead.push('</tr>');
 
@@ -164,8 +167,15 @@
       }
       const pulls = state.counts[i] || 0;
       const mean = pulls ? (state.sums[i] / pulls) : 0;
+      // UCB value (c=1). Unpulled arms show '∞'
+      let ucbVal = '∞';
+      if (pulls > 0) {
+        const bonus = Math.sqrt((2 * Math.log(Math.max(1, state.t))) / pulls);
+        ucbVal = (mean + bonus).toFixed(3);
+      }
       tbody.push(`<td>${pulls} / ${mean.toFixed(3)}</td>`);
-      tbody.push(`<td><button class="btn manual-btn" data-action="pull">拉一次</button></td>`);
+      tbody.push(`<td>${ucbVal}</td>`);
+      tbody.push(`<td><span class="lever"><span class="stick"></span><span class="knob"></span></span> <button class=\"btn manual-btn\" data-action=\"pull\">拉一次</button></td>`);
       tbody.push('</tr>');
     }
 
@@ -176,6 +186,11 @@
       btn.addEventListener('click', (e) => {
         const tr = e.target.closest('tr');
         const idx = parseInt(tr.getAttribute('data-idx'));
+        const lever = tr.querySelector('.lever');
+        if (lever) {
+          lever.classList.add('pulling');
+          setTimeout(() => lever.classList.remove('pulling'), 180);
+        }
         stepOnce('manual', idx);
       });
     });
@@ -221,7 +236,14 @@
     state.sums[armIndex] += reward;
     state.means[armIndex] = state.sums[armIndex] / state.counts[armIndex];
 
-    state.cumulativeRegret = state.t * state.muStar - state.cumulativeReward;
+    // Expected regret: sum_t (mu* - E[r_t])
+    // Here we accumulate using true means of selected arms
+    const expectedRewardThisStep = state.trueMeans[armIndex];
+    const prevExpectedCum = state.historySteps.length > 0 ? (state.t > 1 ? state.expectedCumulativeReward : 0) : 0;
+    // maintain expected cumulative reward separately on state
+    if (state.expectedCumulativeReward == null) state.expectedCumulativeReward = 0;
+    state.expectedCumulativeReward += expectedRewardThisStep;
+    state.cumulativeRegret = state.t * state.muStar - state.expectedCumulativeReward;
 
     state.historySteps.push(state.t);
     state.historyReward.push(state.cumulativeReward);
@@ -304,7 +326,7 @@
     rewardChart.options.scales.y.title.text = '累积奖励';
 
     regretChart = new Chart(dom.regretChartEl.getContext('2d'), JSON.parse(JSON.stringify(lineOptions)));
-    regretChart.options.scales.y.title.text = '后悔值';
+    regretChart.options.scales.y.title.text = '期望后悔值';
   }
 
   function updateCharts() {
@@ -342,6 +364,7 @@
       dom.btnStep1.disabled = manual;
       dom.btnStep10.disabled = manual;
       dom.btnStep100.disabled = manual;
+      if (dom.btnStep1000) dom.btnStep1000.disabled = manual;
     }
 
     dom.btnStep1.addEventListener('click', () => {
@@ -356,6 +379,14 @@
       const s = dom.strategySelect.value;
       stepN(s, 100);
     });
+
+    const btn1000 = document.getElementById('btnStep1000');
+    if (btn1000) {
+      btn1000.addEventListener('click', () => {
+        const s = dom.strategySelect.value;
+        stepN(s, 1000);
+      });
+    }
 
     dom.strategySelect.addEventListener('change', updateStepButtonsDisabled);
     // initialize disabled state

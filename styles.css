@@ -48,3 +48,26 @@ input[type="number"] { width: 100%; }
 .badge { padding: 2px 8px; border-radius: 999px; font-size: 12px; border: 1px solid var(--border); color: var(--muted); }
 .badge.best { border-color: var(--success); color: var(--success); }
 .manual-btn { padding: 6px 10px; font-size: 12px; }
+
+/* Lever animation */
+.lever {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.lever .stick {
+  width: 4px;
+  height: 16px;
+  background: #94a3b8;
+  border-radius: 2px;
+  transform-origin: bottom center;
+  transition: transform 0.15s ease;
+}
+.lever .knob {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--primary);
+  box-shadow: 0 0 0 1px var(--primary-600) inset;
+}
+.lever.pulling .stick { transform: rotate(-25deg); }
