@@ -12,6 +12,9 @@
     paramTable: document.getElementById('paramTable'),
     paramTableContainer: document.getElementById('paramTableContainer'),
     strategySelect: document.getElementById('strategySelect'),
+    strategyParamsRow: document.getElementById('strategyParamsRow'),
+    epsilonInput: document.getElementById('epsilonInput'),
+    tauInput: document.getElementById('tauInput'),
     btnStep1: document.getElementById('btnStep1'),
     btnStep10: document.getElementById('btnStep10'),
     btnStep100: document.getElementById('btnStep100'),
@@ -47,6 +50,10 @@
     historySteps: [],
     historyReward: [],
     historyRegret: [],
+    // UI & strategy params
+    showTruth: false,
+    epsilon: 0.1,
+    tau: 0.2,
   };
 
   // Utilities
@@ -151,6 +158,7 @@
     }
     thead.push('<th>统计（拉动次数/样本均值）</th>');
     thead.push('<th>UCB 置信上界</th>');
+    thead.push('<th>真值</th>');
     thead.push('<th>操作</th>');
     thead.push('</tr>');
 
@@ -175,7 +183,9 @@
       }
       tbody.push(`<td>${pulls} / ${mean.toFixed(3)}</td>`);
       tbody.push(`<td>${ucbVal}</td>`);
-      tbody.push(`<td><span class="lever"><span class="stick"></span><span class="knob"></span></span> <button class=\"btn manual-btn\" data-action=\"pull\">拉一次</button></td>`);
+      const truth = state.trueMeans[i] != null ? state.trueMeans[i].toFixed(3) : '-';
+      tbody.push(`<td>${state.showTruth ? `<span class=\\"badge truth\\">${truth}</span>` : '隐藏'}</td>`);
+      tbody.push(`<td><span class=\"lever\"><span class=\"stick\"></span><span class=\"knob\"></span></span> <button class=\"btn manual-btn\" data-action=\"pull\">拉一次</button></td>`);
       tbody.push('</tr>');
     }
 
@@ -224,6 +234,33 @@
         if (score > bestScore) { bestScore = score; bestIdx = i; }
       }
       return bestIdx;
+    }
+    if (strategy === 'egreedy') {
+      if (Math.random() < state.epsilon) {
+        return Math.floor(Math.random() * state.K);
+      }
+      let bestIdx = 0;
+      let bestMean = -Infinity;
+      for (let i = 0; i < state.K; i++) {
+        const m = state.counts[i] > 0 ? state.means[i] : 0;
+        if (m > bestMean) { bestMean = m; bestIdx = i; }
+      }
+      return bestIdx;
+    }
+    if (strategy === 'softmax') {
+      const tau = Math.max(0.0001, state.tau);
+      const prefs = new Array(state.K).fill(0).map((_, i) => (state.counts[i] > 0 ? state.means[i] : 0));
+      const m = Math.max(...prefs);
+      const expv = prefs.map(v => Math.exp((v - m) / tau));
+      const sum = expv.reduce((a, b) => a + b, 0);
+      const probs = expv.map(v => v / (sum || 1));
+      const r = Math.random();
+      let acc = 0;
+      for (let i = 0; i < probs.length; i++) {
+        acc += probs[i];
+        if (r <= acc) return i;
+      }
+      return state.K - 1;
     }
     // manual should pass explicit arm index
     return 0;
@@ -388,9 +425,36 @@
       });
     }
 
-    dom.strategySelect.addEventListener('change', updateStepButtonsDisabled);
+    function updateStrategyParamsVisibility() {
+      const s = dom.strategySelect.value;
+      if (dom.strategyParamsRow) dom.strategyParamsRow.style.display = (s === 'egreedy' || s === 'softmax') ? '' : 'none';
+      const epsilonWrap = document.getElementById('epsilonWrap');
+      const tauWrap = document.getElementById('tauWrap');
+      if (epsilonWrap) epsilonWrap.style.display = s === 'egreedy' ? '' : 'none';
+      if (tauWrap) tauWrap.style.display = s === 'softmax' ? '' : 'none';
+    }
+    dom.strategySelect.addEventListener('change', () => { updateStepButtonsDisabled(); updateStrategyParamsVisibility(); });
     // initialize disabled state
     updateStepButtonsDisabled();
+    updateStrategyParamsVisibility();
+
+    const btnToggleTruth = document.getElementById('btnToggleTruth');
+    if (btnToggleTruth) {
+      btnToggleTruth.addEventListener('click', () => {
+        state.showTruth = !state.showTruth;
+        btnToggleTruth.textContent = state.showTruth ? '隐藏真值' : '显示真值';
+        renderParamTable();
+      });
+    }
+
+    if (dom.epsilonInput) dom.epsilonInput.addEventListener('input', () => {
+      const v = parseFloat(dom.epsilonInput.value);
+      state.epsilon = isFinite(v) ? Math.min(Math.max(v, 0), 1) : 0.1;
+    });
+    if (dom.tauInput) dom.tauInput.addEventListener('input', () => {
+      const v = parseFloat(dom.tauInput.value);
+      state.tau = isFinite(v) ? Math.max(v, 0.0001) : 0.2;
+    });
   }
 
   // Init

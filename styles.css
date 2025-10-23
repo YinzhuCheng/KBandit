@@ -47,6 +47,7 @@ input[type="number"] { width: 100%; }
 .small-input { width: 110px; }
 .badge { padding: 2px 8px; border-radius: 999px; font-size: 12px; border: 1px solid var(--border); color: var(--muted); }
 .badge.best { border-color: var(--success); color: var(--success); }
+.badge.truth { border-color: var(--warn); color: var(--warn); }
 .manual-btn { padding: 6px 10px; font-size: 12px; }
 
 /* Lever animation */
